@@ -1,0 +1,113 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>BotInsta Dashboard</title>
+    <link rel="stylesheet" href="/style.css?v=2" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <h1 class="logo">BotInsta</h1>
+      </div>
+    </header>
+
+    <!-- Hero Section with Search -->
+    <div class="hero">
+      <div class="hero-inner">
+        <h1>Promoções da Amazon</h1>
+        <p>Busque, gere imagens e ganhe com links de afiliado</p>
+        
+        <div class="search-container">
+          <input id="search-input" type="text" placeholder="Buscar promoções..." value="promoções" class="search-input" />
+          <button id="search-btn" class="btn-search">BUSCAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" data-tab="search">Buscar Produtos</button>
+      <button class="tab-btn" data-tab="saved">Meus Stories (<span id="saved-count">0</span>)</button>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="main">
+      <div class="container">
+        <!-- Tab: Search -->
+        <div id="search-tab" class="tab-content active">
+          <h2 class="section-title">Sugestões de Produtos</h2>
+          <div id="suggestions" class="products-grid"></div>
+        </div>
+
+        <!-- Tab: Saved Stories -->
+        <div id="saved-tab" class="tab-content">
+          <h2 class="section-title">Stories Salvas</h2>
+          <div id="saved-stories" class="saved-stories-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Produto -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-bg" id="modal-bg"></div>
+      <div class="modal-box">
+        <button id="close" class="modal-close">&times;</button>
+        <img id="modal-image" src="" alt="product" class="modal-image" />
+        <h2 id="modal-title" class="modal-title"></h2>
+        <p id="modal-price" class="modal-price"></p>
+        <div class="modal-link-box">
+          <small>Link de afiliado:</small>
+          <a id="modal-link" href="#" target="_blank" class="modal-link">...</a>
+        </div>
+        <div class="modal-actions">
+          <button id="generate" class="btn-action">Gerar Story</button>
+          <button id="saveProduct" class="btn-action">Salvar Produto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Story Gerada -->
+    <div id="storyModal" class="modal hidden">
+      <div class="modal-bg" id="story-modal-bg"></div>
+      <div class="modal-box">
+        <button id="close-story" class="modal-close">&times;</button>
+        <canvas id="canvas" width="1080" height="1920" class="story-canvas"></canvas>
+        <div class="story-info">
+          <h3 id="story-product-title"></h3>
+          <p id="story-product-price"></p>
+          <a id="story-product-link" href="#" target="_blank" class="story-link">Ver no Amazon</a>
+        </div>
+        <div class="story-actions">
+          <button id="download" class="btn-action">Baixar Imagem</button>
+          <button id="shareStory" class="btn-action">Compartilhar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para visualizar story salva -->
+    <div id="savedStoryViewModal" class="modal hidden">
+      <div class="modal-bg" id="saved-story-view-bg"></div>
+      <div class="modal-box">
+        <button id="close-saved-story-view" class="modal-close">&times;</button>
+        <img id="saved-story-view-image" src="" alt="story" class="story-canvas" />
+        <div class="story-info">
+          <h3 id="saved-story-view-title"></h3>
+          <p id="saved-story-view-price"></p>
+          <a id="saved-story-view-link" href="#" target="_blank" class="story-link">Ver no Amazon</a>
+        </div>
+        <div class="story-actions">
+          <button id="download-saved-from-view" class="btn-action">Baixar Imagem</button>
+          <button id="delete-saved-from-view" class="btn-action btn-danger">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
