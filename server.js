@@ -8,6 +8,7 @@ const cron = require('node-cron');
 const { fetchSuggestions } = require('./src/scraper');
 const { searchAmazon } = require('./src/serpapi');
 const { db, init } = require('./src/db');
+const { supabase, initDatabase } = require('./src/supabase');
 
 // simple in-memory cache for search results (TTL: 1 hour)
 const cache = {
@@ -17,9 +18,79 @@ const cache = {
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ==================== STORIES ENDPOINTS (Supabase) ====================
+
+// GET todas as stories
+app.get('/api/stories', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('stories')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    console.error('Erro ao buscar stories:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST nova story
+app.post('/api/stories', async (req, res) => {
+  try {
+    const { title, price, image, canvas_data, link } = req.body;
+    
+    if (!title || !canvas_data) {
+      return res.status(400).json({ error: 'title e canvas_data são obrigatórios' });
+    }
+
+    // Primeiro, remove story antiga do mesmo produto
+    const { error: deleteError } = await supabase
+      .from('stories')
+      .delete()
+      .eq('title', title);
+    
+    if (deleteError) console.warn('Aviso ao deletar story antiga:', deleteError.message);
+
+    // Depois, insere a nova story
+    const { data, error } = await supabase
+      .from('stories')
+      .insert([{ title, price, image, canvas_data, link }])
+      .select();
+    
+    if (error) throw error;
+    res.json({ success: true, data: data[0] });
+  } catch (err) {
+    console.error('Erro ao salvar story:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE story
+app.delete('/api/stories/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('stories')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Erro ao deletar story:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== PRODUTOS ENDPOINTS ====================
 
 app.get('/api/suggestions', async (req, res) => {
   try {
@@ -146,6 +217,10 @@ cron.schedule('0 * * * *', async () => {
 const port = process.env.PORT || 3000;
 (async () => {
   await init();
+  
+  // Inicializa Supabase
+  const supabaseReady = await initDatabase();
+  
   const server = app.listen(port, '0.0.0.0', () => {
     const addr = server.address();
     const host = addr && addr.address ? addr.address : 'localhost';
@@ -159,6 +234,7 @@ const port = process.env.PORT || 3000;
       console.log(`🚀 Server running on http://${host === '::' ? 'localhost' : host}:${p} - SerpApi: NOT configured`);
     }
     console.log(`📦 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`📊 Supabase: ${supabaseReady ? '✅ Connected' : '⚠️ Check configuration'}`);
   });
 
   process.on('unhandledRejection', (reason, p) => {

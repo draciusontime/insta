@@ -428,33 +428,28 @@ function saveStory() {
     return;
   }
 
-  // Remove story antiga do mesmo produto (evita duplicatas)
-  const productTitle = currentStoryProduct.title;
-  const indexOfExisting = savedStories.findIndex(story => story.title === productTitle);
-  if (indexOfExisting !== -1) {
-    console.log(`🗑️ Removendo story antiga do produto: ${productTitle}`);
-    savedStories.splice(indexOfExisting, 1);
-  }
-
   const storyData = {
-    id: Date.now(),
     title: currentStoryProduct.title,
     price: currentStoryProduct.price,
     image: currentStoryProduct.image,
     canvasData: canvas.toDataURL('image/png'),
-    link: storyLink.href,
-    createdAt: new Date().toISOString()
+    link: storyLink.href
   };
 
   console.log('storyData:', storyData);
-  savedStories.unshift(storyData);
-  console.log('savedStories after unshift:', savedStories);
   
-  localStorage.setItem(STORAGE_KEY_SAVED_STORIES, JSON.stringify(savedStories));
-  console.log('localStorage saved');
-  
-  updateSavedCount();
-  console.log('updateSavedCount() called');
+  // Salva no Supabase
+  savStoryToSupabase(storyData)
+    .then(() => {
+      // Recarrega as stories
+      loadSavedStories();
+      renderSavedStories();
+      console.log('✅ Story salva com sucesso!');
+    })
+    .catch((err) => {
+      console.error('❌ Erro ao salvar story:', err);
+      alert('Erro ao salvar story: ' + err.message);
+    });
 }
 
 async function saveProduct() {
@@ -507,12 +502,17 @@ async function saveProduct() {
 }
 
 // ==================== SAVED STORIES ====================
-function loadSavedStories() {
+async function loadSavedStories() {
   console.log('loadSavedStories() called');
-  const stored = localStorage.getItem(STORAGE_KEY_SAVED_STORIES);
-  console.log('localStorage value:', stored);
-  savedStories = stored ? JSON.parse(stored) : [];
-  console.log('savedStories loaded:', savedStories);
+  try {
+    savedStories = await loadStoriesFromSupabase();
+    console.log('savedStories loaded from Supabase:', savedStories);
+  } catch (err) {
+    console.error('Erro ao carregar stories do Supabase:', err);
+    // Fallback para localStorage se Supabase falhar
+    const stored = localStorage.getItem(STORAGE_KEY_SAVED_STORIES);
+    savedStories = stored ? JSON.parse(stored) : [];
+  }
   updateSavedCount();
 }
 
@@ -545,9 +545,12 @@ function renderSavedStories() {
     const card = document.createElement('div');
     card.className = 'saved-story-card';
 
+    // Usa canvas_data (do Supabase) ou canvasData (fallback para localStorage)
+    const imageData = story.canvas_data || story.canvasData;
+
     card.innerHTML = `
       <div class="saved-story-card-preview">
-        <img src="${story.canvasData}" alt="story preview" style="width: 100%; height: 100%; object-fit: contain;" />
+        <img src="${imageData}" alt="story preview" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22200%22 height=%22200%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22 fill=%22%23999%22%3EImagem indisponível%3C/text%3E%3C/svg%3E'" />
       </div>
       <div class="saved-story-card-info">
         <h3 class="saved-story-card-title">${story.title}</h3>
@@ -582,7 +585,9 @@ function renderSavedStories() {
 
 function downloadSavedStory(story) {
   const link = document.createElement('a');
-  link.href = story.canvasData;
+  // Usa canvas_data (do Supabase) ou canvasData (fallback para localStorage)
+  const imageData = story.canvas_data || story.canvasData;
+  link.href = imageData;
   link.download = `story-${story.title.slice(0, 20).replace(/\s+/g, '_')}-${story.id}.png`;
   link.click();
 }
@@ -590,10 +595,18 @@ function downloadSavedStory(story) {
 function deleteStory(storyId) {
   if (!confirm('Tem certeza que deseja excluir esta story?')) return;
 
-  savedStories = savedStories.filter(s => s.id !== storyId);
-  localStorage.setItem(STORAGE_KEY_SAVED_STORIES, JSON.stringify(savedStories));
-  updateSavedCount();
-  renderSavedStories();
+  // Deleta do Supabase
+  deleteStoryFromSupabase(storyId)
+    .then(() => {
+      // Recarrega as stories
+      loadSavedStories();
+      renderSavedStories();
+      console.log('✅ Story deletada com sucesso!');
+    })
+    .catch((err) => {
+      console.error('❌ Erro ao deletar story:', err);
+      alert('Erro ao deletar story: ' + err.message);
+    });
 }
 
 // ==================== SAVED STORY VIEW MODAL ====================
@@ -609,7 +622,10 @@ function openSavedStoryView(story) {
   const savedStoryViewPrice = document.getElementById('saved-story-view-price');
   const savedStoryViewLink = document.getElementById('saved-story-view-link');
 
-  savedStoryViewImage.src = story.canvasData;
+  // Usa canvas_data (do Supabase) ou canvasData (fallback para localStorage)
+  const imageData = story.canvas_data || story.canvasData;
+  
+  savedStoryViewImage.src = imageData;
   savedStoryViewTitle.textContent = story.title;
   savedStoryViewPrice.textContent = story.price;
   savedStoryViewLink.href = story.link;
